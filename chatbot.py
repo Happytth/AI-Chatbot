@@ -1,15 +1,24 @@
 import streamlit as st
-from dotenv import load_dotenv
+import os
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
-# Load environment variables (e.g., Hugging Face API key)
-load_dotenv()
+# (Optional) For local development only — won't break cloud
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except:
+    pass
+
+# Get API key from environment (Streamlit Secrets or local .env)
+HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 # Initialize Hugging Face model
 llm = HuggingFaceEndpoint(
     repo_id="meta-llama/Llama-3.1-8B-Instruct",
-    task="chatbot"
+    task="chatbot",
+    huggingfacehub_api_token=HF_TOKEN,
 )
+
 model = ChatHuggingFace(llm=llm)
 
 # Streamlit UI
@@ -21,23 +30,23 @@ if "messages" not in st.session_state:
 
 # Display previous messages
 for msg in st.session_state["messages"]:
-    if msg["role"] == "user":
-        st.chat_message("user").write(msg["content"])
-    else:
-        st.chat_message("ai").write(msg["content"])
+    role = "user" if msg["role"] == "user" else "assistant"
+    st.chat_message(role).write(msg["content"])
 
-# Chat input box
+# Chat input
 user_input = st.chat_input("Type your message...")
 
 if user_input:
-    # Save user message
-    st.session_state["messages"].append({"role": "user", "content": user_input})
+    st.session_state["messages"].append(
+        {"role": "user", "content": user_input}
+    )
     st.chat_message("user").write(user_input)
 
-    # Get AI response
+    # AI response
     result = model.invoke(user_input)
     response = result.content
 
-    # Save AI response
-    st.session_state["messages"].append({"role": "ai", "content": response})
-    st.chat_message("ai").write(response)
+    st.session_state["messages"].append(
+        {"role": "assistant", "content": response}
+    )
+    st.chat_message("assistant").write(response)
